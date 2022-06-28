@@ -1,7 +1,10 @@
 import pygame
 import os
 import random
+import toml
 
+DEFAULT_KEY_UP = pygame.K_w
+DEFAULT_KEY_DOWN = pygame.K_s
 
 WIDTH, HEIGHT = 900, 500
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -33,12 +36,12 @@ def draw_window(P1, P2):
     pygame.display.update()
 
 
-def P1_handle_movement(keys_pressed, P1):
-    if keys_pressed[pygame.K_w]:  # P1 UP
+def P1_handle_movement(keys_pressed, P1, key_up=DEFAULT_KEY_UP, key_down=DEFAULT_KEY_DOWN):
+    if keys_pressed[key_up]:  # P1 UP
         if P1.y > 10:
             P1.y -= VEL
 
-    if keys_pressed[pygame.K_s]:  # P1 DOWN
+    if keys_pressed[key_down]:  # P1 DOWN
         if P1.y < HEIGHT - 10 - RECTANGLE_HEIGHT:
             P1.y += VEL
 
@@ -49,7 +52,23 @@ def BALL_restart(ball_vel_x, ball_vel_y):
     ball_vel_x *= random.choice((1, -1))
 
 
+def get_config(toml_file="pyproject.toml"):
+    pong_settings = toml.load(toml_file).get("pong", {})
+    key_settings = pong_settings.get("key", {"up": "K_w", "down": "K_s"})
+    const_dict = vars(pygame.constants)
+    config = {}
+    for k, v in key_settings.items():
+        if v not in const_dict:
+            raise Exception(f"Invalid {k} key in pong.key: {v}")
+        else:
+            config[f"key_{k}"] = const_dict[v]
+
+    return config
+
+
 def main():
+    config = get_config()
+    print(config)
 
     ball_vel_y = 7
     ball_vel_x = 7
@@ -65,7 +84,7 @@ def main():
                 run = False
 
         keys_pressed = pygame.key.get_pressed()
-        P1_handle_movement(keys_pressed, P1)
+        P1_handle_movement(keys_pressed, P1, key_up=config["key_up"], key_down=config["key_down"])
         # BALL MOVEMENT
         BALL.x += ball_vel_x
         BALL.y += ball_vel_y
