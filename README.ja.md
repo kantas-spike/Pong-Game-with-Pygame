@@ -72,3 +72,31 @@ down = 'K_DOWN'
 ~~~shell
 $ poetry run task format
 ~~~
+
+### コードチェック
+
+ソースをコミットする前に、`flake8`による、コードをチェックしてください。
+なにかエラーが表示される場合は、なるべくエラーを修正してください。
+
+~~~shell
+$ poetry run task lint
+~~~
+
+また、`vscode`に`flake8`によるコードチェックを有効にする場合は、`Homebrew`などで`flake8`をインストールし、
+
+~~~shell
+$ brew install flake8
+~~~
+
+`vscode`で以下を設定してください。
+
+~~~json
+"python.linting.flake8Enabled": true
+"python.linting.flake8Path": "flake8"
+"python.linting.flake8Args": [
+  "--max-line-length",
+  "119",
+  "--extend-ignore",
+  "E203"
+]
+~~~

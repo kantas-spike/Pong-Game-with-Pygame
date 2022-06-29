@@ -12,9 +12,11 @@ toml = "^0.10.2"
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"
 taskipy = "^1.10.2"
+flake8 = "^4.0.1"
 
 [tool.taskipy.tasks]
 format = "black *.py"
+lint = "flake8 --extend-ignore=E203 --max-line-length=119"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
