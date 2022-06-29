@@ -7,6 +7,7 @@ DEFAULT_KEY_UP = pygame.K_w
 DEFAULT_KEY_DOWN = pygame.K_s
 
 WIDTH, HEIGHT = 900, 500
+
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Pong Game!")
 
@@ -18,6 +19,7 @@ VEL = 6
 
 AI_VEL = 6
 
+AI_JUDGE_STARTING_POINT = WIDTH * 0.55
 
 RECTANGLE_WIDTH, RECTANGLE_HEIGHT = 5, 60
 
@@ -66,6 +68,47 @@ def get_config(toml_file="pyproject.toml"):
     return config
 
 
+def expected_ball_position(b_position, d_x, d_y, p2_x):
+    slope = d_y / d_x
+
+    c_p = horizontal_contact_point(b_position, slope)
+    if c_p[0] < p2_x:
+        c_p = vertical_contact_point(p2_x, c_p, slope * -1)
+    else:
+        c_p = vertical_contact_point(p2_x, b_position, slope)
+    return c_p
+
+
+def horizontal_contact_point(b_position, slope):
+    b_x, b_y = b_position
+    if slope > 0:
+        y = HEIGHT
+    else:
+        y = 0
+    x = (y - b_y) / slope + b_x
+    return (x, y)
+
+
+def vertical_contact_point(p2_x, b_position, slope):
+    b_x, b_y = b_position
+    y = slope * (p2_x - b_x) + b_y
+    return (p2_x, y)
+
+
+def move_p2(P2, d_x, d_y):
+    y = BALL.y
+    if d_x > 0 and BALL.x > AI_JUDGE_STARTING_POINT:
+        e_p = expected_ball_position((BALL.x, BALL.y), d_x, d_y, P2.x)
+        y = e_p[1]
+    else:
+        y = (HEIGHT - RECTANGLE_HEIGHT) / 2
+
+    if P2.top < y:
+        P2.top = min(HEIGHT - 10 - RECTANGLE_HEIGHT, P2.top + AI_VEL)
+    if P2.bottom > y:
+        P2.bottom = max(10 + RECTANGLE_HEIGHT, P2.bottom - AI_VEL)
+
+
 def main():
     config = get_config()
     print(config)
@@ -98,10 +141,7 @@ def main():
 
         # AI MOVEMENT
 
-        if P2.top < BALL.y:
-            P2.top += AI_VEL
-        if P2.bottom > BALL.y:
-            P2.bottom -= AI_VEL
+        move_p2(P2, ball_vel_x, ball_vel_y)
 
         draw_window(P1, P2)
 
