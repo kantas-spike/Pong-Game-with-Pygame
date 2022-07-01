@@ -1,3 +1,4 @@
+from collections import namedtuple
 import pygame
 import os
 import random
@@ -5,53 +6,57 @@ import toml
 
 DEFAULT_KEY_UP = pygame.K_w
 DEFAULT_KEY_DOWN = pygame.K_s
-
-WIDTH, HEIGHT = 900, 500
-
-WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Pong Game!")
-
-RETRO_BLUE = (44, 78, 114)
-
-BORDER = pygame.Rect(WIDTH / 2 - 2, 0, 4, HEIGHT)
+COLOR_RETRO_BLUE = (44, 78, 114)
+COLOR_WHITE = (255, 255, 255)
 FPS = 60
-VEL = 6
+PADDLE1_SPEED = [0, 6]
+PADDLE2_SPEED = [0, 6]
 
-AI_VEL = 6
+SCREEN_SIZE = WIDTH, HEIGHT = 900, 500
+AI_JUDGE_STARTING_POINT = WIDTH * 0.65
 
-AI_JUDGE_STARTING_POINT = WIDTH * 0.55
+PADDLE_WIDTH, PADDLE_HEIGHT = 5, 60
 
-RECTANGLE_WIDTH, RECTANGLE_HEIGHT = 5, 60
-
-
-RECTANGLE_IMAGE = pygame.image.load(os.path.join("Assets", "red_rectangle.png"))
-RECTANGLE = pygame.transform.scale(RECTANGLE_IMAGE, (RECTANGLE_WIDTH, RECTANGLE_HEIGHT))
-BALL = pygame.Rect(WIDTH / 2 - 7.5, HEIGHT / 2 - 7.5, 15, 15)
+Element = namedtuple("Element", ["surface", "rect"])
 
 
-def draw_window(P1, P2):
-    WIN.fill(RETRO_BLUE)
-    pygame.draw.rect(WIN, (255, 255, 255), BORDER)
-    pygame.draw.ellipse(WIN, (255, 255, 255), BALL)
-    WIN.blit(RECTANGLE, (P1.x, P1.y))
-    WIN.blit(RECTANGLE, (P2.x, P2.y))
-    pygame.display.update()
+def setup_border():
+    surface = pygame.Surface((4, HEIGHT))
+    surface.fill(COLOR_WHITE)
+    element = Element(surface=surface, rect=pygame.Rect(WIDTH / 2 - 2, 0, 4, HEIGHT))
+    return element
 
 
-def P1_handle_movement(keys_pressed, P1, key_up=DEFAULT_KEY_UP, key_down=DEFAULT_KEY_DOWN):
-    if keys_pressed[key_up]:  # P1 UP
-        if P1.y > 10:
-            P1.y -= VEL
-
-    if keys_pressed[key_down]:  # P1 DOWN
-        if P1.y < HEIGHT - 10 - RECTANGLE_HEIGHT:
-            P1.y += VEL
+def setup_ball():
+    surface = pygame.Surface((15, 15))
+    pygame.draw.ellipse(surface, COLOR_WHITE, (0, 0, 15, 15))
+    element = Element(surface=surface, rect=pygame.Rect(WIDTH / 2 - 7.5, HEIGHT / 2 - 7.5, 15, 15))
+    return element
 
 
-def BALL_restart(ball_vel_x, ball_vel_y):
-    BALL.center = (WIDTH / 2, HEIGHT / 2)
-    ball_vel_y *= random.choice((1, -1))
-    ball_vel_x *= random.choice((1, -1))
+def setup_paddle(topleft):
+    image = pygame.image.load(os.path.join("Assets", "red_rectangle.png")).convert()
+    surface = pygame.transform.scale(image, (PADDLE_WIDTH, PADDLE_HEIGHT))
+    rect = pygame.Rect(topleft, (PADDLE_WIDTH, PADDLE_HEIGHT))
+    element = Element(surface=surface, rect=rect)
+    return element
+
+
+def draw_screen(screen, border, p1, p2, ball):
+    screen.fill(COLOR_RETRO_BLUE)
+    screen.blit(border.surface, border.rect)
+
+    screen.blit(p1.surface, p1.rect)
+    screen.blit(p2.surface, p2.rect)
+    screen.blit(ball.surface, ball.rect)
+
+    pygame.display.flip()
+
+
+def restart_ball(ball, ball_speed):
+    ball.rect.center = (WIDTH / 2, HEIGHT / 2)
+    ball_speed[0] *= random.choice((1, -1))
+    ball_speed[1] *= random.choice((1, -1))
 
 
 def get_config(toml_file="pyproject.toml"):
@@ -68,8 +73,8 @@ def get_config(toml_file="pyproject.toml"):
     return config
 
 
-def expected_ball_position(b_position, d_x, d_y, p2_x):
-    slope = d_y / d_x
+def expected_ball_position(b_position, ball_speed, p2_x):
+    slope = ball_speed[1] / ball_speed[0]
 
     c_p = horizontal_contact_point(b_position, slope)
     if c_p[0] < p2_x:
@@ -95,55 +100,74 @@ def vertical_contact_point(p2_x, b_position, slope):
     return (p2_x, y)
 
 
-def move_p2(P2, d_x, d_y):
-    y = BALL.y
-    if d_x > 0 and BALL.x > AI_JUDGE_STARTING_POINT:
-        e_p = expected_ball_position((BALL.x, BALL.y), d_x, d_y, P2.x)
+def move_paddle1(keys_pressed, paddle, key_up=DEFAULT_KEY_UP, key_down=DEFAULT_KEY_DOWN):
+    if keys_pressed[key_up]:  # P1 UP
+        if paddle.rect.top > 10:
+            paddle.rect.move_ip(PADDLE1_SPEED[0], PADDLE1_SPEED[1] * -1)
+
+    if keys_pressed[key_down]:  # P1 DOWN
+        if paddle.rect.top < HEIGHT - 10 - PADDLE_HEIGHT:
+            paddle.rect.move_ip(PADDLE1_SPEED)
+
+
+def move_paddle2(p2, ball, ball_speed):
+    y = ball.rect.y
+    if ball_speed[0] > 0 and ball.rect.x > AI_JUDGE_STARTING_POINT:
+        e_p = expected_ball_position(ball.rect.topleft, ball_speed, p2.rect.left)
         y = e_p[1]
     else:
-        y = (HEIGHT - RECTANGLE_HEIGHT) / 2
+        y = (HEIGHT - PADDLE_HEIGHT) / 2
 
-    if P2.top < y:
-        P2.top = min(HEIGHT - 10 - RECTANGLE_HEIGHT, P2.top + AI_VEL)
-    if P2.bottom > y:
-        P2.bottom = max(10 + RECTANGLE_HEIGHT, P2.bottom - AI_VEL)
+    if p2.rect.top < y:
+        p2.rect.top = min(HEIGHT - 10 - PADDLE_HEIGHT, p2.rect.top + PADDLE2_SPEED[1])
+    if p2.rect.bottom > y:
+        p2.rect.bottom = max(10 + PADDLE_HEIGHT, p2.rect.bottom - PADDLE2_SPEED[1])
+
+
+def move_ball(ball, ball_speed, p1, p2):
+    ball.rect.move_ip(ball_speed)
+
+    if ball.rect.top <= 0 or ball.rect.bottom >= HEIGHT:
+        ball_speed[1] *= -1
+    if ball.rect.left <= 0 or ball.rect.right >= WIDTH:
+        restart_ball(ball, ball_speed)
+
+    if ball.rect.colliderect(p1.rect) or ball.rect.colliderect(p2.rect):
+        ball_speed[0] *= -1
 
 
 def main():
     config = get_config()
-    print(config)
 
-    ball_vel_y = 7
-    ball_vel_x = 7
-    P1 = pygame.Rect(40, 250, RECTANGLE_WIDTH, RECTANGLE_HEIGHT)
-    P2 = pygame.Rect(860, 250, RECTANGLE_WIDTH, RECTANGLE_HEIGHT)
+    pygame.init()
+    pygame.display.set_caption("Pong Game!")
+
+    screen = pygame.display.set_mode(SCREEN_SIZE)
+    border = setup_border()
+    ball = setup_ball()
+    ball_speed = [7, 7]
+
+    paddle1 = setup_paddle((40, 250))
+    paddle2 = setup_paddle((860, 250))
 
     clock = pygame.time.Clock()
     run = True
     while run:
-        clock.tick(FPS)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
 
+        # move elements
         keys_pressed = pygame.key.get_pressed()
-        P1_handle_movement(keys_pressed, P1, key_up=config["key_up"], key_down=config["key_down"])
-        # BALL MOVEMENT
-        BALL.x += ball_vel_x
-        BALL.y += ball_vel_y
-        if BALL.top <= 0 or BALL.bottom >= HEIGHT:
-            ball_vel_y *= -1
-        if BALL.left <= 0 or BALL.right >= WIDTH:
-            BALL_restart(ball_vel_x, ball_vel_y)
-
-        if BALL.colliderect(P1) or BALL.colliderect(P2):
-            ball_vel_x *= -1
+        move_paddle1(keys_pressed, paddle1, key_up=config["key_up"], key_down=config["key_down"])
+        move_ball(ball, ball_speed, paddle1, paddle2)
 
         # AI MOVEMENT
+        move_paddle2(paddle2, ball, ball_speed)
 
-        move_p2(P2, ball_vel_x, ball_vel_y)
-
-        draw_window(P1, P2)
+        # draw
+        draw_screen(screen, border, paddle1, paddle2, ball)
+        clock.tick(FPS)
 
     pygame.quit()
 
