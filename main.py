@@ -18,6 +18,14 @@ AI_JUDGE_STARTING_POINT = WIDTH * 0.65
 PADDLE_WIDTH, PADDLE_HEIGHT = 5, 60
 
 Element = namedtuple("Element", ["surface", "rect"])
+SCORE = [0, 0]
+
+
+def setup_score(font, score, point):
+    text = font.render(str(score), True, COLOR_WHITE)
+    rect = text.get_rect()
+    rect.midtop = point
+    return Element(surface=text, rect=rect)
 
 
 def setup_border():
@@ -42,9 +50,15 @@ def setup_paddle(topleft):
     return element
 
 
-def draw_screen(screen, border, p1, p2, ball):
+def draw_screen(screen, border, p1, p2, ball, font):
     screen.fill(COLOR_RETRO_BLUE)
     screen.blit(border.surface, border.rect)
+
+    p1_score_text = setup_score(font, SCORE[0], (WIDTH/4, 10))
+    p2_score_text = setup_score(font, SCORE[1], (WIDTH/4 * 3, 10))
+
+    screen.blit(p1_score_text.surface, p1_score_text.rect)
+    screen.blit(p2_score_text.surface, p2_score_text.rect)
 
     screen.blit(p1.surface, p1.rect)
     screen.blit(p2.surface, p2.rect)
@@ -62,6 +76,8 @@ def restart_ball(ball, ball_speed):
 def get_config(toml_file="pyproject.toml"):
     pong_settings = toml.load(toml_file).get("pong", {})
     key_settings = pong_settings.get("key", {"up": "K_w", "down": "K_s"})
+    font_settings = pong_settings.get("font", {"path": "/System/Library/Fonts/Supplemental/Arial.ttf", "size": 24})
+
     const_dict = vars(pygame.constants)
     config = {}
     for k, v in key_settings.items():
@@ -69,6 +85,9 @@ def get_config(toml_file="pyproject.toml"):
             raise Exception(f"Invalid {k} key in pong.key: {v}")
         else:
             config[f"key_{k}"] = const_dict[v]
+
+    config["font_path"] = font_settings["path"]
+    config["font_size"] = font_settings["size"]
 
     return config
 
@@ -130,6 +149,11 @@ def move_ball(ball, ball_speed, p1, p2):
     if ball.rect.top <= 0 or ball.rect.bottom >= HEIGHT:
         ball_speed[1] *= -1
     if ball.rect.left <= 0 or ball.rect.right >= WIDTH:
+        if ball.rect.left <= 0:
+            SCORE[1] += 1
+        else:
+            SCORE[0] += 1
+
         restart_ball(ball, ball_speed)
 
     if ball.rect.colliderect(p1.rect) or ball.rect.colliderect(p2.rect):
@@ -141,6 +165,8 @@ def main():
 
     pygame.init()
     pygame.display.set_caption("Pong Game!")
+
+    font = pygame.font.Font(config["font_path"], config["font_size"])
 
     screen = pygame.display.set_mode(SCREEN_SIZE)
     border = setup_border()
@@ -166,7 +192,7 @@ def main():
         move_paddle2(paddle2, ball, ball_speed)
 
         # draw
-        draw_screen(screen, border, paddle1, paddle2, ball)
+        draw_screen(screen, border, paddle1, paddle2, ball, font)
         clock.tick(FPS)
 
     pygame.quit()
