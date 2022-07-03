@@ -28,3 +28,7 @@ line-length = 119
 [pong.key]
 up = 'K_UP'
 down = 'K_DOWN'
+
+[pong.font]
+path = "/Users/kanta/Library/Fonts/BIZUDGothic-Regular.ttf"
+size = 40
