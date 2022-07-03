@@ -47,6 +47,8 @@ $ poetry shell
 |`w`| キーを押す(押し続ける)と、パドルは上へ移動 |
 |`s`| キーを押す(押し続ける)を、パドルは下へ移動 |
 
+## ゲームの設定
+
 ### キーのカスタマイズ
 
 `pyproject.toml`のテーブル`[pong.key]`内に`up`または`down`に`キー定数名`を指定することで、上下操作のキーを変更できます。
@@ -61,6 +63,20 @@ $ poetry shell
 [pong.key]
 up = 'K_UP'
 down = 'K_DOWN'
+~~~
+
+### フォントのカスタマイズ
+
+ゲームのスコア表示に使用しているフォントは、デフォルトで、MacOS内のフォントファイルである `/System/Library/Fonts/Supplemental/Arial.ttf` になり、フォントサイズは`24`になっています。
+
+MacOS以外の場合や、他のフォントに変更したい場合は、`pyproject.toml`のテーブル`[pong.font]`内の`path`にフォントファイルのパスを指定することで変更できます。
+同様に、フォントサイズを変更したい場合は、`[pong.font]`内の`size`にフォントサイズを指定することで変更できます。
+
+以下は、フォント `BIZUDゴシック`、サイズ `40` に設定する場合の例です。
+~~~toml
+[pong.font]
+path = "/Users/kanta/Library/Fonts/BIZUDGothic-Regular.ttf"
+size = 40
 ~~~
 
 ## 開発者の方へ
